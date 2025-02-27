@@ -140,7 +140,9 @@ try:
 except Exception as e:
     st.error(f"❌ Error al generar el mapa: {e}")
 
+# ----------------------------------------------------------------------------------------------------------------------
 # 🔹 OBTENER Y MOSTRAR DATOS METEOROLÓGICOS EN TIEMPO REAL 🔹
+# ----------------------------------------------------------------------------------------------------------------------
 try:
     st.subheader("🌦️ Datos Meteorológicos en Tiempo Real")
 
@@ -203,11 +205,13 @@ except Exception as e:
 
 
 
-
+# ----------------------------------------------------------------------------------------------------------------------
+# 🔹 OBTENER Y MOSTRAR EL ESTADO DEL MAR 🔹
+# ----------------------------------------------------------------------------------------------------------------------
 # 🔹 OBTENER Y MOSTRAR EL ESTADO DEL MAR 🔹
 try:
     st.subheader("🌊 Estado del Mar (AEMET)")
-    
+
     url_base = "https://opendata.aemet.es/opendata/api/prediccion/maritima/costera/costa/46/"
     params = {"api_key": API_KEY}
     response = requests.get(url_base, params=params)
@@ -222,14 +226,27 @@ try:
             if data_response.status_code == 200:
                 datos_mar_json = data_response.json()
 
-                # Extraer la descripción textual del estado del mar
+                # Extraer la descripción general del estado del mar
                 estado_mar_texto = datos_mar_json[0].get("situacion", {}).get("texto", "No disponible")
+                tendencia_mar = datos_mar_json[0].get("tendencia", {}).get("texto", "No disponible")
 
-                # Mostrar información en Streamlit
+                # Mostrar información general
                 st.write(f"📅 **Elaborado el:** {datos_mar_json[0]['origen']['elaborado']}")
                 st.write(f"📅 **Válido desde:** {datos_mar_json[0]['origen']['inicio']} hasta {datos_mar_json[0]['origen']['fin']}")
                 st.write(f"⚠️ **Avisos:** {datos_mar_json[0]['aviso']['texto']}")
-                st.write(f"🌊 **Descripción:** {estado_mar_texto}")
+
+                # Mostrar descripción general
+                st.info(f"🌊 **Situación General:** {estado_mar_texto}")
+                st.info(f"📈 **Tendencia:** {tendencia_mar}")
+
+                # 🔹 Extraer y mostrar predicción por zonas 🔹
+                st.subheader("🌊 Predicción por Zonas")
+                for zona in datos_mar_json[0].get("prediccion", {}).get("zona", []):
+                    nombre_zona = zona.get("nombre", "Zona desconocida")
+                    for subzona in zona.get("subzona", []):
+                        texto_prediccion = subzona.get("texto", "Sin información")
+                        st.markdown(f"**📍 {nombre_zona}**")
+                        st.write(f"🔹 {texto_prediccion}")
 
             else:
                 st.warning("⚠️ No se pudieron obtener los datos reales del estado del mar.")
@@ -239,3 +256,4 @@ try:
         st.warning(f"⚠️ Error en la solicitud de estado del mar. Código HTTP: {response.status_code}")
 except Exception as e:
     st.error(f"❌ Error en la obtención de datos marítimos: {e}")
+# ----------------------------------------------------------------------------------------------------------------------
