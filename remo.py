@@ -68,19 +68,16 @@ if codigo_puerto:
 
 # 📌 Mostrar el nuevo widget
         contenedor_widget.markdown(
-            f'<iframe width="1040" height="570" src="{url_widget}" frameborder="0"></iframe>',
+                f"""
+                <iframe width="1040" height="570" src="{url_widget}" frameborder="0"></iframe>',
+                <br>
+                <p style="text-align: center; font-size: 14px;">
+                    ℹ️ <b>Para ampliar información sobre este puerto, visita 
+                <a href="https://portus.puertos.es" target="_blank">Portus - Puertos del Estado</a></b> 🌍
+                </p>
+                """,
             unsafe_allow_html=True
         )
 
-
-
-
-    # url_widget = f"https://portus.puertos.es/#/locationsWidget?code={codigo_puerto}&theme=dark&locale=es&cache_buster={st.session_state.widget_contador}"
-    # 📌 Mostrar el widget con los datos
-    # st.markdown(f"### 🌊 **Previsiones y estado actual del mar en el {puerto_seleccionado}.** Todas las horas son GMT.")
-    # st.markdown(
-    #    f'<iframe src="{url_widget}" width="1040" height="570" frameborder="0"></iframe>',
-    #    unsafe_allow_html=True
-    #)
 else:
     st.warning("⚠️ No se encontró el código del puerto seleccionado.")
