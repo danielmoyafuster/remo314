@@ -34,8 +34,8 @@ if "puerto_actual" not in st.session_state:
     st.session_state.puerto_actual = None
 
 # 📌 Selector de puerto ordenado alfabéticamente
-puerto_seleccionado = st.selectbox("Selecciona un puerto:", sorted(codigos_puertos_estado.keys()))
-
+# puerto_seleccionado = st.selectbox("Selecciona un puerto:", sorted(codigos_puertos_estado.keys()))
+puerto_seleccionado = st.selectbox("Selecciona un puerto:")
 # 📌 Obtener el código del puerto
 codigo_puerto = codigos_puertos_estado.get(puerto_seleccionado, None)
 
