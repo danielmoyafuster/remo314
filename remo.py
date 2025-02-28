@@ -1,259 +1,179 @@
+
+# ---------------------------------------------------------------------------------------------------------
+# OBTENER DICCIONARIO DE PUERTOS Y COORDENADAS -> POBLACIÓN (CODIGOS DE MUNICIPIOS)
+# --------------------------------------------------------------------------------------------------------- 
 import requests
 import pandas as pd
+from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut
+import time
+import unidecode
 import streamlit as st
+import json
 import folium
 from streamlit_folium import folium_static
 from geopy.distance import geodesic
-
-# API Key de AEMET (sustituye con la tuya)
+from streamlit_folium import st_folium
+# ---------------------------------------------------------------------------------------------------------
+# API Key de AEMET
 API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkYW5pZWxtb3lhZnVzdGVyQGdtYWlsLmNvbSIsImp0aSI6ImE5YzRlYzA2LTQ5ZmMtNGIyZi04OGU4LWRjNTQ1MDA1MThmYiIsImlzcyI6IkFFTUVUIiwiaWF0IjoxNzQwNjY4MjQ4LCJ1c2VySWQiOiJhOWM0ZWMwNi00OWZjLTRiMmYtODhlOC1kYzU0NTAwNTE4ZmIiLCJyb2xlIjoiIn0.FPSuXda0P6PeRFZ80LHCW-O6cMdMR8RLTFl_pBKQ6q4"
-
-# URL de AEMET para obtener todas las estaciones climatológicas
-url_estaciones = "https://opendata.aemet.es/opendata/api/valores/climatologicos/inventarioestaciones/todasestaciones/"
-
-
-# Diccionario de puertos con sus coordenadas
-# (Este es un ejemplo; deberás completar con todos los puertos recopilados)
-puertos = {
-    "Puerto de Valencia": (39.4538, -0.3236),
-    "Puerto de Alicante": (38.3452, -0.4810),
-    "Puerto de Castellón": (39.9689, -0.0226),
-    "Puerto de Gandía": (38.9955, -0.1602),
-    "Puerto de Dénia": (38.8408, 0.1057),
-    "Puerto de Sagunto": (39.6447, -0.2389),
-    "Puerto de Torrevieja": (37.9774, -0.6804),
-    "Puerto de Altea": (38.5986, -0.0515),
-    "Puerto de Benidorm": (38.5342, -0.1310),
-    "Puerto de Calpe": (38.6445, 0.0673),
-    "Puerto de Santa Pola": (38.1913, -0.5663),
-    "Puerto de Villajoyosa": (38.5070, -0.2324),
-    "Puerto de Burriana": (39.8895, -0.0847),
-    "Puerto de Peñíscola": (40.3597, 0.4061),
-    "Puerto de Vinaroz": (40.4700, 0.4753),
-    "Puerto de Oropesa": (40.0964, 0.1430),
-    "Puerto de Jávea": (38.7939, 0.1805),
-    "Puerto de Moraira": (38.6880, 0.1453),
-    "Puerto de Cullera": (39.1641, -0.2510),
-    "Puerto de Oliva": (38.9190, -0.1198),
-    "Puerto de El Campello": (38.4285, -0.3991),
-    "Puerto de Pilar de la Horadada": (37.8670, -0.7900),
-    "Puerto de Guardamar del Segura": (38.0897, -0.6500),
-    "Puerto de Marina Greenwich": (38.6346, 0.0703),
-    "Puerto de Marina de Valencia": (39.4538, -0.3236),
-    "Puerto de Marina Real Juan Carlos I": (39.4538, -0.3236),
-    "Puerto de Marina Dénia": (38.8408, 0.1057),
-    "Puerto de Marina Torrevieja": (37.9774, -0.6804),
-    "Puerto de Marina Benidorm": (38.5342, -0.1310),
-    "Puerto de Marina Calpe": (38.6445, 0.0673),
-    "Puerto de Marina Santa Pola": (38.1913, -0.5663),
-    "Puerto de Marina Burriana": (39.8895, -0.0847),
-    "Puerto de Marina Peñíscola": (40.3597, 0.4061),
-    "Puerto de Marina Vinaroz": (40.4700, 0.4753),
-    "Puerto de Marina Oropesa": (40.0964, 0.1430),
-    "Puerto de Marina Jávea": (38.7939, 0.1805),
-    "Puerto de Marina Moraira": (38.6880, 0.1453),
-    "Puerto de Marina Cullera": (39.1641, -0.2510),
-    "Puerto de Marina Oliva": (38.9190, -0.1198)
+# ---------------------------------------------------------------------------------------------------------
+# DICCIONARIO PUERTOS -> CODIGOS DE MUNICIPIOS -> COORDENADAS GPS -> SUBZONA PORTUARIA
+# ---------------------------------------------------------------------------------------------------------
+datos_puertos = {
+    "Puerto de Alicante": ("03014", (38.3452, -0.4810), "Aguas costeras de Alicante"),
+    "Puerto de Altea": ("03018", (38.5986, -0.0515), "Aguas costeras de Alicante"),
+    "Puerto de Benidorm": ("03031", (38.5342, -0.1310), "Aguas costeras de Alicante"),
+    "Puerto de Burriana": ("12032", (39.8895, -0.0847), "Aguas costeras de Castellón"),
+    "Puerto de Calpe": ("03047", (38.6445, 0.0673), "Aguas costeras de Alicante"),
+    "Puerto de Castellón": ("12040", (39.9689, -0.0226), "Aguas costeras de Castellón"),
+    "Puerto de Cullera": ("46105", (39.1641, -0.2510), "Aguas costeras de Valencia"),
+    "Puerto de Dénia": ("03063", (38.8408, 0.1057), "Aguas costeras de Alicante"),
+    "Puerto de El Campello": ("03050", (38.4285, -0.3991), "Aguas costeras de Alicante"),
+    "Puerto de Gandía": ("46131", (38.9955, -0.1602), "Aguas costeras de Valencia"),
+    "Puerto de Guardamar del Segura": ("03076", (38.0897, -0.6500), "Aguas costeras de Alicante"),
+    "Puerto de Jávea": ("03082", (38.7939, 0.1805), "Aguas costeras de Alicante"),
+    "Puerto de Marina Benidorm": ("03031", (38.5342, -0.1310), "Aguas costeras de Alicante"),
+    "Puerto de Marina Burriana": ("12032", (39.8895, -0.0847), "Aguas costeras de Castellón"),
+    "Puerto de Marina Calpe": ("03047", (38.6445, 0.0673), "Aguas costeras de Alicante"),
+    "Puerto de Marina Cullera": ("46105", (39.1641, -0.2510), "Aguas costeras de Valencia"),
+    "Puerto de Marina Dénia": ("03063", (38.8408, 0.1057), "Aguas costeras de Alicante"),
+    "Puerto de Marina Jávea": ("03082", (38.7939, 0.1805), "Aguas costeras de Alicante"),
+    "Puerto de Marina Moraira": ("03047", (38.6880, 0.1453), "Aguas costeras de Alicante"),
+    "Puerto de Marina Oliva": ("06093", (38.9190, -0.1198), "Aguas costeras de Valencia"),
+    "Puerto de Marina Oropesa": ("12085", (40.0964, 0.1430), "Aguas costeras de Castellón"),
+    "Puerto de Marina Peñíscola": ("12089", (40.3597, 0.4061), "Aguas costeras de Castellón"),
+    "Puerto de Marina Real Juan Carlos I": ("06139", (39.4538, -0.3236), "Aguas costeras de Valencia"),
+    "Puerto de Marina Santa Pola": ("03121", (38.1913, -0.5663), "Aguas costeras de Alicante"),
+    "Puerto de Marina Torrevieja": ("03133", (37.9774, -0.6804), "Aguas costeras de Alicante"),
+    "Puerto de Marina Valencia": ("06139", (39.4538, -0.3236), "Aguas costeras de Valencia"),
+    "Puerto de Marina Vinaroz": ("12138", (40.4700, 0.4753), "Aguas costeras de Castellón"),
+    "Puerto de Marina Greenwich": ("03047", (38.6346, 0.0703), "Aguas costeras de Alicante"),
+    "Puerto de Moraira": ("03047", (38.6880, 0.1453), "Aguas costeras de Alicante"),
+    "Puerto de Oliva": ("06093", (38.9190, -0.1198), "Aguas costeras de Valencia"),
+    "Puerto de Oropesa": ("12085", (40.0964, 0.1430), "Aguas costeras de Castellón"),
+    "Puerto de Peñíscola": ("12089", (40.3597, 0.4061), "Aguas costeras de Castellón"),
+    "Puerto de Pilar de la Horadada": ("03902", (37.8670, -0.7900), "Aguas costeras de Alicante"),
+    "Puerto de Santa Pola": ("03121", (38.1913, -0.5663), "Aguas costeras de Alicante"),
+    "Puerto de Sagunto": ("46220", (39.6447, -0.2389), "Aguas costeras de Valencia"),
+    "Puerto de Torrevieja": ("03133", (37.9774, -0.6804), "Aguas costeras de Alicante"),
+    "Puerto de Valencia": ("06139", (39.4538, -0.3236), "Aguas costeras de Valencia"),
+    "Puerto de Vinaroz": ("12138", (40.4700, 0.4753), "Aguas costeras de Castellón"),
+    "Puerto de Villajoyosa": ("03139", (38.5070, -0.2324), "Aguas costeras de Alicante")
 }
-#
-# --------------------------------------------------------------------------------------------------------------
-#
 
-# 🔹 Obtener estaciones meteorológicas 🔹
-try:
+# ---------------------------------------------------------------------------------------------------------
+# FUNCIONES PARA OBTENER DATOS DE AEMET
+# ---------------------------------------------------------------------------------------------------------
+# 🔹 Función para obtener predicción meteorológica
+def obtener_prediccion(codigo_municipio):
+    url_prediccion = f"https://opendata.aemet.es/opendata/api/prediccion/especifica/municipio/diaria/{codigo_municipio}/"
     params = {"api_key": API_KEY}
-    response = requests.get(url_estaciones, params=params)
+
+    response = requests.get(url_prediccion, params=params)
+    if response.status_code == 200:
+        data_json = response.json()
+        if "datos" in data_json:
+            data_url = data_json["datos"]
+            data_response = requests.get(data_url)
+            return data_response.json() if data_response.status_code == 200 else None
+    return None
+
+# 🔹 Función para obtener estado del mar
+def obtener_estado_mar():
+    url_mar = "https://opendata.aemet.es/opendata/api/prediccion/maritima/costera/costa/46/"
+    params = {"api_key": API_KEY}
+
+    response = requests.get(url_mar, params=params)
+    if response.status_code == 200:
+        data_json_mar = response.json()
+        if "datos" in data_json_mar:
+            data_url_mar = data_json_mar["datos"]
+            data_response_mar = requests.get(data_url_mar)
+            return data_response_mar.json() if data_response_mar.status_code == 200 else None
+    return None
+
+# 🔹 Función para estimar altura de olas, periodo y estado del mar basado en viento
+def estimar_estado_mar(velocidad_viento, fetch=10):
+    """
+    Calcula la altura de las olas, el periodo y el estado del mar basado en el viento.
+    :param velocidad_viento: Velocidad del viento en m/s
+    :param fetch: Distancia recorrida por el viento sobre el agua en km (por defecto 10 km)
+    :return: (altura_olas, periodo_olas, estado_mar)
+    """
     
-    if response.status_code == 200:
-        data_json = response.json()
-        
-        if "datos" in data_json:
-            data_url = data_json["datos"]
-            data_response = requests.get(data_url)
+    if velocidad_viento > 20:  # Asumimos que el dato está en km/h si es grande
+        velocidad_viento = velocidad_viento / 3.6  # Convertir km/h a m/s
+    
+    altura_olas = 0.0245 * (velocidad_viento ** 1.2) * (fetch ** 0.3)
+    periodo_olas = 0.67 * (altura_olas ** 0.5)
 
-            if data_response.status_code == 200:
-                estaciones = data_response.json()
-                df = pd.DataFrame(estaciones)
-
-                # Filtrar estaciones de la Comunidad Valenciana
-                provincias_cv = ["ALICANTE", "VALENCIA", "CASTELLÓN"]
-                df_cv = df[df["provincia"].str.upper().isin(provincias_cv)]
-
-                # Convertir coordenadas
-                def convertir_coordenadas(latitud, longitud):
-                    def convertir(valor, direccion):
-                        grados = int(valor[:2])
-                        minutos = int(valor[2:4]) / 60
-                        decimal = grados + minutos
-                        if direccion in ["S", "W"]:
-                            decimal = -decimal
-                        return decimal
-
-                    latitud_decimal = convertir(latitud[:-1], latitud[-1])
-                    longitud_decimal = convertir(longitud[:-1], longitud[-1])
-                    return (latitud_decimal, longitud_decimal)
-
-                df_cv["Coordenadas"] = df_cv.apply(lambda row: convertir_coordenadas(row["latitud"], row["longitud"]), axis=1)
-
-                # Asignar estación más cercana a cada puerto
-                estaciones_mas_cercanas = {}
-                for puerto, coord_puerto in puertos.items():
-                    distancia_minima = float("inf")
-                    estacion_mas_cercana = None
-
-                    for _, row in df_cv.iterrows():
-                        distancia = geodesic(coord_puerto, row["Coordenadas"]).kilometers
-                        if distancia < distancia_minima:
-                            distancia_minima = distancia
-                            estacion_mas_cercana = row["nombre"]
-
-                    estaciones_mas_cercanas[puerto] = (estacion_mas_cercana, distancia_minima)
-
-                estaciones_disponibles = True
-            else:
-                st.error("❌ No se pudieron obtener los datos de las estaciones.")
-        else:
-            st.error("❌ No se encontró la clave 'datos' en la respuesta de AEMET.")
+    if altura_olas < 0.1:
+        estado_mar = "Mar en calma"
+    elif altura_olas < 0.5:
+        estado_mar = "Mar rizada"
+    elif altura_olas < 1.25:
+        estado_mar = "Marejadilla"
+    elif altura_olas < 2.5:
+        estado_mar = "Marejada"
+    elif altura_olas < 4.0:
+        estado_mar = "Fuerte marejada"
+    elif altura_olas < 6.0:
+        estado_mar = "Gruesa"
+    elif altura_olas < 9.0:
+        estado_mar = "Muy gruesa"
+    elif altura_olas < 14.0:
+        estado_mar = "Arbolada"
     else:
-        st.error(f"❌ Error en la solicitud a AEMET: {response.status_code} - {response.text}")
-except Exception as e:
-    st.error(f"❌ Error en la obtención de datos meteorológicos: {e}")
+        estado_mar = "Montañosa"
 
-# 🔹 Interfaz en Streamlit 🔹
-st.title("🌊 Estaciones Meteorológicas y Estado del Mar")
+    return round(altura_olas, 2), round(periodo_olas, 2), estado_mar
 
-# 📌 Mostrar climatología aunque falle el estado del mar
-if estaciones_disponibles:
-    puerto_seleccionado = st.selectbox("Selecciona un puerto:", list(puertos.keys()))
-    estacion_cercana, distancia = estaciones_mas_cercanas.get(puerto_seleccionado, ("No encontrada", None))
+# 🔹 Interfaz en Streamlit
+st.title("🌊 Predicción Meteorológica en Puertos de la Comunidad Valenciana")
 
-    if estacion_cercana != "No encontrada":
-        st.write(f"📍 **Estación más cercana:** {estacion_cercana}")
-        st.write(f"📏 **Distancia:** {distancia:.2f} km")
+# 📌 Selección del puerto
+puerto_seleccionado = st.selectbox("Selecciona un puerto:", list(datos_puertos.keys()))
+codigo_municipio, coordenadas, subzona = datos_puertos[puerto_seleccionado]
 
-# 🔹 MOSTRAR MAPA 🔹
-try:
-    st.subheader("🗺️ Ubicación en el Mapa")
-    mapa = folium.Map(location=puertos[puerto_seleccionado], zoom_start=10)
-    folium.Marker(puertos[puerto_seleccionado], popup=puerto_seleccionado, icon=folium.Icon(color="blue")).add_to(mapa)
-    folium_static(mapa)
-except Exception as e:
-    st.error(f"❌ Error al generar el mapa: {e}")
+# 🔹 Mapa interactivo
+st.subheader("🗺️ Ubicación en el mapa")
+mapa = folium.Map(location=coordenadas, zoom_start=10)
+folium.Marker(location=coordenadas, popup=f"{puerto_seleccionado}", icon=folium.Icon(color="blue", icon="info-sign")).add_to(mapa)
+folium_static(mapa)
 
-# ----------------------------------------------------------------------------------------------------------------------
-# 🔹 OBTENER Y MOSTRAR DATOS METEOROLÓGICOS EN TIEMPO REAL 🔹
-# ----------------------------------------------------------------------------------------------------------------------
-try:
-    st.subheader("🌦️ Datos Meteorológicos en Tiempo Real")
+# 🔹 Obtener y mostrar predicción meteorológica
+datos_prediccion = obtener_prediccion(codigo_municipio)
+if datos_prediccion:
+    prediccion_hoy = datos_prediccion[0]["prediccion"]["dia"][0]
+    prediccion_manana = datos_prediccion[0]["prediccion"]["dia"][1]
 
-    # Obtener el código de la estación más cercana
-    codigo_estacion = df_cv[df_cv["nombre"] == estacion_cercana]["indicativo"].values[0]
+    estado_cielo_hoy = next((e["descripcion"] for e in prediccion_hoy["estadoCielo"] if e["periodo"] == "12-24"), "No disponible")
+    estado_cielo_manana = next((e["descripcion"] for e in prediccion_manana["estadoCielo"] if e["periodo"] == "12-24"), "No disponible")
 
-    # Verificar si el código de la estación está disponible
-    if not codigo_estacion:
-        st.warning("⚠️ No se encontró un código de estación meteorológica para este puerto.")
-    else:
-        url_datos_meteo = f"https://opendata.aemet.es/opendata/api/observacion/convencional/datos/estacion/{codigo_estacion}"
-        params = {"api_key": API_KEY}
-        response_meteo = requests.get(url_datos_meteo, params=params)
+    fecha_hoy = prediccion_hoy["fecha"][:10]
+    fecha_manana = prediccion_manana["fecha"][:10]
 
-        # Verificar si la solicitud fue exitosa
-        if response_meteo.status_code == 200:
-            data_json_meteo = response_meteo.json()
-            
-            if "datos" in data_json_meteo:
-                data_url_meteo = data_json_meteo["datos"]
-                data_response_meteo = requests.get(data_url_meteo)
+    st.subheader(f"📡 Predicción para {puerto_seleccionado}")
+    st.write(f"📅 **Hoy ({fecha_hoy}):** {estado_cielo_hoy}, 🌡 Temp. Máx: {prediccion_hoy['temperatura']['maxima']}°C, Temp. Mín: {prediccion_hoy['temperatura']['minima']}°C")
+    st.write(f"📅 **Mañana ({fecha_manana}):** {estado_cielo_manana}, 🌡 Temp. Máx: {prediccion_manana['temperatura']['maxima']}°C, Temp. Mín: {prediccion_manana['temperatura']['minima']}°C")
 
-                if data_response_meteo.status_code == 200:
-                    datos_meteo = data_response_meteo.json()
-                    df_meteo = pd.DataFrame(datos_meteo)
+# 🔹 Obtener y mostrar estado del mar
+datos_mar_json = obtener_estado_mar()
+if datos_mar_json:
+    for zona in datos_mar_json[0]["prediccion"]["zona"]:
+        if zona["nombre"] == subzona:
+            st.subheader(f"🌊 Estado del Mar en {subzona}")
+            for subzona_data in zona["subzona"]:
+                st.write(f"📍 **{subzona_data['nombre']}**")
+                st.write(f"🌊 **Descripción:** {subzona_data['texto']}")
+                st.write("---")
+            break
 
-                    # Verificar si la tabla de datos meteorológicos tiene contenido
-                    if df_meteo.empty:
-                        st.warning("⚠️ No hay datos meteorológicos disponibles en este momento.")
-                    else:
-                        # Definir las columnas a mostrar
-                        columnas_disponibles = ["fint", "ta", "hr", "vv", "vmax", "dv", "prec", "tamin", "tamax"]
-
-                        # Filtrar solo las columnas que realmente existen en df_meteo
-                        columnas_filtradas = [col for col in columnas_disponibles if col in df_meteo.columns]
-
-                        # Mostrar tabla de datos en Streamlit
-                        st.dataframe(df_meteo[columnas_filtradas].rename(columns={
-                            "fint": "Fecha/Hora",
-                            "ta": "Temperatura (°C)",
-                            "hr": "Humedad (%)",
-                            "vv": "Velocidad del Viento (km/h)",
-                            "vmax": "Ráfaga Máxima de Viento (km/h)",
-                            "dv": "Dirección del Viento (°)",
-                            "prec": "Precipitación (mm)",
-                            "tamin": "Temperatura Mínima (°C)",
-                            "tamax": "Temperatura Máxima (°C)"
-                        }))
-                else:
-                    st.warning(f"⚠️ No se pudieron obtener los datos meteorológicos. Código HTTP: {data_response_meteo.status_code}")
-            else:
-                st.warning("⚠️ AEMET no proporcionó una URL con datos meteorológicos.")
-        else:
-            st.warning(f"⚠️ Error en la solicitud de datos meteorológicos. Código HTTP: {response_meteo.status_code}")
-except Exception as e:
-    st.error(f"❌ Error en la obtención de datos meteorológicos: {e}")
-
-
-
-
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-# 🔹 OBTENER Y MOSTRAR EL ESTADO DEL MAR 🔹
-# ----------------------------------------------------------------------------------------------------------------------
-# 🔹 OBTENER Y MOSTRAR EL ESTADO DEL MAR 🔹
-try:
-    st.subheader("🌊 Estado del Mar (AEMET)")
-
-    url_base = "https://opendata.aemet.es/opendata/api/prediccion/maritima/costera/costa/46/"
-    params = {"api_key": API_KEY}
-    response = requests.get(url_base, params=params)
-
-    if response.status_code == 200:
-        data_json = response.json()
-
-        if "datos" in data_json:
-            data_url = data_json["datos"]
-            data_response = requests.get(data_url)
-
-            if data_response.status_code == 200:
-                datos_mar_json = data_response.json()
-
-                # Extraer la descripción general del estado del mar
-                estado_mar_texto = datos_mar_json[0].get("situacion", {}).get("texto", "No disponible")
-                tendencia_mar = datos_mar_json[0].get("tendencia", {}).get("texto", "No disponible")
-
-                # Mostrar información general
-                st.write(f"📅 **Elaborado el:** {datos_mar_json[0]['origen']['elaborado']}")
-                st.write(f"📅 **Válido desde:** {datos_mar_json[0]['origen']['inicio']} hasta {datos_mar_json[0]['origen']['fin']}")
-                st.write(f"⚠️ **Avisos:** {datos_mar_json[0]['aviso']['texto']}")
-
-                # Mostrar descripción general
-                st.info(f"🌊 **Situación General:** {estado_mar_texto}")
-                st.info(f"📈 **Tendencia:** {tendencia_mar}")
-
-                # 🔹 Extraer y mostrar predicción por zonas 🔹
-                st.subheader("🌊 Predicción por Zonas")
-                for zona in datos_mar_json[0].get("prediccion", {}).get("zona", []):
-                    nombre_zona = zona.get("nombre", "Zona desconocida")
-                    for subzona in zona.get("subzona", []):
-                        texto_prediccion = subzona.get("texto", "Sin información")
-                        st.markdown(f"**📍 {nombre_zona}**")
-                        st.write(f"🔹 {texto_prediccion}")
-
-            else:
-                st.warning("⚠️ No se pudieron obtener los datos reales del estado del mar.")
-        else:
-            st.warning("⚠️ AEMET no proporcionó una URL con datos del mar.")
-    else:
-        st.warning(f"⚠️ Error en la solicitud de estado del mar. Código HTTP: {response.status_code}")
-except Exception as e:
-    st.error(f"❌ Error en la obtención de datos marítimos: {e}")
-# ----------------------------------------------------------------------------------------------------------------------
+# 🔹 Calcular y mostrar estado estimado del mar basado en viento
+velocidad_viento = 30  # Sustituir por el dato real
+altura_olas, periodo_olas, estado_mar = estimar_estado_mar(velocidad_viento)
+st.subheader("🌊 Estado Estimado del Mar")
+st.write(f"🌊 **Altura de las Olas:** {altura_olas} m")
+st.write(f"⏳ **Periodo de las Olas:** {periodo_olas} s")
+st.write(f"📌 **Estado del Mar:** {estado_mar}")
