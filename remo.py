@@ -8,7 +8,7 @@ codigos_puertos_estado = {
     "San Juan (Alicante)": "36141",
     "Puerto de Altea": "26118",
     "Puerto de Benidorm": "26117",
-    "El Grau de Burriana": "26207",
+    "Puerto El Grau de Burriana": "26207",
     "Puerto de Calpe": "26119",
     "Puerto de Castellón": "16240",
     "Puerto de Cullera": "26204",
@@ -34,8 +34,8 @@ if "puerto_actual" not in st.session_state:
     st.session_state.puerto_actual = None
 
 # 📌 Selector de puerto ordenado alfabéticamente
-# puerto_seleccionado = st.selectbox("Selecciona un puerto:", sorted(codigos_puertos_estado.keys()))
-puerto_seleccionado = st.selectbox("Selecciona un puerto:")
+puerto_seleccionado = st.selectbox("Selecciona un puerto:", sorted(codigos_puertos_estado.keys()))
+
 # 📌 Obtener el código del puerto
 codigo_puerto = codigos_puertos_estado.get(puerto_seleccionado, None)
 
