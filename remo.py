@@ -1,176 +1,86 @@
-
-# ---------------------------------------------------------------------------------------------------------
-# OBTENER DICCIONARIO DE PUERTOS Y COORDENADAS -> POBLACIÓN (CODIGOS DE MUNICIPIOS)
-# --------------------------------------------------------------------------------------------------------- 
-import requests
-import pandas as pd
-from geopy.geocoders import Nominatim
-from geopy.exc import GeocoderTimedOut
-import time
-import unidecode
 import streamlit as st
-import json
-import folium
-from streamlit_folium import folium_static
-from geopy.distance import geodesic
-from streamlit_folium import st_folium
-import re
+import time
 
-# ---------------------------------------------------------------------------------------------------------
-# API Key de AEMET
-API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkYW5pZWxtb3lhZnVzdGVyQGdtYWlsLmNvbSIsImp0aSI6ImE5YzRlYzA2LTQ5ZmMtNGIyZi04OGU4LWRjNTQ1MDA1MThmYiIsImlzcyI6IkFFTUVUIiwiaWF0IjoxNzQwNjY4MjQ4LCJ1c2VySWQiOiJhOWM0ZWMwNi00OWZjLTRiMmYtODhlOC1kYzU0NTAwNTE4ZmIiLCJyb2xlIjoiIn0.FPSuXda0P6PeRFZ80LHCW-O6cMdMR8RLTFl_pBKQ6q4"
-# ---------------------------------------------------------------------------------------------------------
-# DICCIONARIO PUERTOS -> CODIGOS DE MUNICIPIOS -> COORDENADAS GPS -> SUBZONA PORTUARIA
-# ---------------------------------------------------------------------------------------------------------
-codigos_coordenadas_puertos = {
-    "Puerto de Alicante": ("03014", (38.3452, -0.4810), "Aguas costeras de Alicante"),
-    "Puerto de Altea": ("03018", (38.5986, -0.0515), "Aguas costeras de Alicante"),
-    "Puerto de Benidorm": ("03031", (38.5342, -0.1310), "Aguas costeras de Alicante"),
-    "Puerto de Burriana": ("12032", (39.8895, -0.0847), "Aguas costeras de Castellón"),
-    "Puerto de Calpe": ("03047", (38.6445, 0.0673), "Aguas costeras de Alicante"),
-    "Puerto de Castellón": ("12040", (39.9689, -0.0226), "Aguas costeras de Castellón"),
-    "Puerto de Cullera": ("46105", (39.1641, -0.2510), "Aguas costeras de Valencia"),
-    "Puerto de Dénia": ("03063", (38.8408, 0.1057), "Aguas costeras de Alicante"),
-    "Puerto de El Campello": ("03050", (38.4285, -0.3991), "Aguas costeras de Alicante"),
-    "Puerto de Gandía": ("46131", (38.9955, -0.1602), "Aguas costeras de Valencia"),
-    "Puerto de Guardamar del Segura": ("03076", (38.0897, -0.6500), "Aguas costeras de Alicante"),
-    "Puerto de Jávea": ("03082", (38.7939, 0.1805), "Aguas costeras de Alicante"),
-    "Puerto de Marina Benidorm": ("03031", (38.5342, -0.1310), "Aguas costeras de Alicante"),
-    "Puerto de Marina Burriana": ("12032", (39.8895, -0.0847), "Aguas costeras de Castellón"),
-    "Puerto de Marina Calpe": ("03047", (38.6445, 0.0673), "Aguas costeras de Alicante"),
-    "Puerto de Marina Cullera": ("46105", (39.1641, -0.2510), "Aguas costeras de Valencia"),
-    "Puerto de Marina Dénia": ("03063", (38.8408, 0.1057), "Aguas costeras de Alicante"),
-    "Puerto de Marina Jávea": ("03082", (38.7939, 0.1805), "Aguas costeras de Alicante"),
-    "Puerto de Marina Moraira": ("03047", (38.6880, 0.1453), "Aguas costeras de Alicante"),
-    "Puerto de Marina Oliva": ("06093", (38.9190, -0.1198), "Aguas costeras de Valencia"),
-    "Puerto de Marina Oropesa": ("12085", (40.0964, 0.1430), "Aguas costeras de Castellón"),
-    "Puerto de Marina Peñíscola": ("12089", (40.3597, 0.4061), "Aguas costeras de Castellón"),
-    "Puerto de Marina Real Juan Carlos I": ("06139", (39.4538, -0.3236), "Aguas costeras de Valencia"),
-    "Puerto de Marina Santa Pola": ("03121", (38.1913, -0.5663), "Aguas costeras de Alicante"),
-    "Puerto de Marina Torrevieja": ("03133", (37.9774, -0.6804), "Aguas costeras de Alicante"),
-    "Puerto de Marina Valencia": ("06139", (39.4538, -0.3236), "Aguas costeras de Valencia"),
-    "Puerto de Marina Vinaroz": ("12138", (40.4700, 0.4753), "Aguas costeras de Castellón"),
-    "Puerto de Marina Greenwich": ("03047", (38.6346, 0.0703), "Aguas costeras de Alicante"),
-    "Puerto de Moraira": ("03047", (38.6880, 0.1453), "Aguas costeras de Alicante"),
-    "Puerto de Oliva": ("06093", (38.9190, -0.1198), "Aguas costeras de Valencia"),
-    "Puerto de Oropesa": ("12085", (40.0964, 0.1430), "Aguas costeras de Castellón"),
-    "Puerto de Peñíscola": ("12089", (40.3597, 0.4061), "Aguas costeras de Castellón"),
-    "Puerto de Pilar de la Horadada": ("03902", (37.8670, -0.7900), "Aguas costeras de Alicante"),
-    "Puerto de Santa Pola": ("03121", (38.1913, -0.5663), "Aguas costeras de Alicante"),
-    "Puerto de Sagunto": ("46220", (39.6447, -0.2389), "Aguas costeras de Valencia"),
-    "Puerto de Torrevieja": ("03133", (37.9774, -0.6804), "Aguas costeras de Alicante"),
-    "Puerto de Valencia": ("06139", (39.4538, -0.3236), "Aguas costeras de Valencia"),
-    "Puerto de Vinaroz": ("12138", (40.4700, 0.4753), "Aguas costeras de Castellón"),
-    "Puerto de Villajoyosa": ("03139", (38.5070, -0.2324), "Aguas costeras de Alicante")
+# 📌 Diccionario con los códigos reales de los puertos
+codigos_puertos_estado = {
+    "Puerto de Alicante": "16130",
+    "La Albufereta (Alicante)":"36141",
+    "San Juan (Alicante)": "36141",
+    "Puerto de Altea": "26118",
+    "Puerto de Benidorm": "26117",
+    "El Grau de Burriana": "26207",
+    "Puerto de Calpe": "26119",
+    "Puerto de Castellón": "16240",
+    "Puerto de Cullera": "26204",
+    "Puerto de Dénia": "26202",
+    "Puerto de El Campello": "26115",
+    "Puerto de Gandía": "16210",
+    "Puerto Guardamar del Segura": "26112",
+    "Puerto de Jávea": "26201",
+    "Pau Pi (Oliva)": "36261",
+    "Puerto de Oropesa": "26210",
+    "Puerto de Peñíscola": "26212",
+    "Puerto de Pilar de la Horadada": "36110",
+    "Puerto de Santa Pola": "26113",
+    "Puerto de Sagunto": "16230",
+    "Puerto de Torrevieja": "26111",
+    "Puerto de Valencia": "16220",
+    "Puerto de Villajoyosa": "26116",
+    "Puerto de Vinaroz": "16250",
 }
 
-# ---------------------------------------------------------------------------------------------------------
-# FUNCIONES PARA OBTENER DATOS DE AEMET
-# ---------------------------------------------------------------------------------------------------------
-# 🔹 Función para obtener predicción meteorológica de AEMET
-def obtener_prediccion(codigo_municipio):
-    url_prediccion = f"https://opendata.aemet.es/opendata/api/prediccion/especifica/municipio/diaria/{codigo_municipio}/"
-    params = {"api_key": API_KEY}
-    
-    try:
-        response = requests.get(url_prediccion, params=params, timeout=10)
-        if response.status_code == 200:
-            data_json = response.json()
-            if "datos" in data_json:
-                data_url = data_json["datos"]
-                data_response = requests.get(data_url, timeout=10)
-                return data_response.json() if data_response.status_code == 200 else None
-    except requests.exceptions.RequestException as e:
-        st.error(f"Error obteniendo predicción: {e}")
-    return None
+# 📌 Guardar el estado del puerto seleccionado en la sesión de Streamlit
+if "puerto_actual" not in st.session_state:
+    st.session_state.puerto_actual = None
 
-# 🔹 Función para estimar el estado del mar basado en la velocidad del viento
-def estimar_estado_mar(velocidad_viento):
-    if velocidad_viento > 20:
-        velocidad_viento /= 3.6  # Convertir km/h a m/s
-    
-    altura_olas = 0.0245 * (velocidad_viento ** 1.2) * (10 ** 0.3)
-    periodo_olas = 0.67 * (altura_olas ** 0.5)
+# 📌 Selector de puerto ordenado alfabéticamente
+puerto_seleccionado = st.selectbox("Selecciona un puerto:", sorted(codigos_puertos_estado.keys()))
 
-    if altura_olas < 0.1:
-        estado_mar = "Mar en calma"
-    elif altura_olas < 0.5:
-        estado_mar = "Mar rizada"
-    elif altura_olas < 1.25:
-        estado_mar = "Marejadilla"
-    elif altura_olas < 2.5:
-        estado_mar = "Marejada"
-    elif altura_olas < 4.0:
-        estado_mar = "Fuerte marejada"
-    elif altura_olas < 6.0:
-        estado_mar = "Gruesa"
-    elif altura_olas < 9.0:
-        estado_mar = "Muy gruesa"
-    elif altura_olas < 14.0:
-        estado_mar = "Arbolada"
-    else:
-        estado_mar = "Montañosa"
+# 📌 Obtener el código del puerto
+codigo_puerto = codigos_puertos_estado.get(puerto_seleccionado, None)
 
-    return round(altura_olas, 2), round(periodo_olas, 2), estado_mar
+# 📌 Si el usuario cambia de puerto, forzar la actualización del iframe
+if puerto_seleccionado != st.session_state.puerto_actual:
+    st.session_state.puerto_actual = puerto_seleccionado  # Guardamos el nuevo puerto seleccionado
+    st.session_state.widget_contador = time.time()  # Nuevo valor único para evitar caché
 
-# 🔹 Función para obtener la velocidad del viento desde el estado del mar
-def obtener_velocidad_viento(datos_mar_json, subzona):
-    try:
-        for zona in datos_mar_json[0]["prediccion"]["zona"]:
-            for subzona_data in zona["subzona"]:
-                if subzona_data["nombre"] == subzona:
-                    descripcion = subzona_data["texto"]
-                    match = re.search(r'(\d+) a (\d+)', descripcion)
-                    if match:
-                        return (int(match.group(1)) + int(match.group(2))) / 2
-                    match = re.search(r'(\d+)', descripcion)
-                    if match:
-                        return int(match.group(1))
-    except Exception as e:
-        st.warning(f"Error al obtener la velocidad del viento: {e}")
-    return 10
+    # 📌 Forzar una limpieza del iframe antes de recargarlo
+    st.markdown("⚠️ Cargando datos de Puertos del Estado...")
+    time.sleep(0.5)  # Esperar 0.5 segundos antes de insertar el nuevo iframe
+    st.markdown("")  # Limpiar el widget
 
-# 🔹 Streamlit - Interfaz de usuario
-st.title("🌊 Predicción Meteorológica y Estado del Mar en Puertos")
+# 📌 Generar la URL del widget
+if codigo_puerto:
+# 📌 Contenedor dinámico para el widget
+    contenedor_widget = st.empty()
 
-# 📌 Selección del puerto
-puerto_seleccionado = st.selectbox("Selecciona un puerto:", list(codigos_coordenadas_puertos.keys()))
-if puerto_seleccionado in codigos_coordenadas_puertos:
-    codigo_municipio, coordenadas, subzona = codigos_coordenadas_puertos[puerto_seleccionado]
+# 📌 Mensaje de carga mientras cambia el widget
+    with contenedor_widget:
+        st.warning("⚠️ Cargando datos de Puertos del Estado...")
 
-# 📌 Mostrar mapa interactivo
-st.subheader("🗺️ Ubicación en el mapa")
-mapa = folium.Map(location=coordenadas, zoom_start=10)
-folium.Marker(location=coordenadas, popup=f"{puerto_seleccionado}", icon=folium.Icon(color="blue")).add_to(mapa)
-folium_static(mapa)
+# 📌 Generar la URL del widget con un "cache buster" para forzar recarga
+        cache_buster = int(time.time())  # Genera un número aleatorio basado en el tiempo
+        url_widget = f"https://portus.puertos.es/#/locationsWidget?code={codigo_puerto}&theme=dark&locale=es&cache_buster={cache_buster}"
 
-# 🔹 Obtener predicción meteorológica
-datos_prediccion = obtener_prediccion(codigo_municipio)
+# 📌 Vaciar el contenedor antes de insertar el nuevo `iframe`
+        contenedor_widget.empty()
+        time.sleep(1)  # Pequeña pausa para asegurar que Streamlit no conserve caché
 
-if datos_prediccion:
-    prediccion_hoy = datos_prediccion[0]["prediccion"]["dia"][0]
-    prediccion_manana = datos_prediccion[0]["prediccion"]["dia"][1]
+# 📌 Mostrar el nuevo widget
+        contenedor_widget.markdown(
+            f'<iframe width="1040" height="570" src="{url_widget}" frameborder="0"></iframe>',
+            unsafe_allow_html=True
+        )
 
-    fecha_hoy = prediccion_hoy["fecha"][:10]
-    fecha_manana = prediccion_manana["fecha"][:10]
 
-    estado_cielo_hoy = next((e["descripcion"] for e in prediccion_hoy["estadoCielo"] if e["periodo"] == "12-24"), "No disponible")
-    estado_cielo_manana = next((e["descripcion"] for e in prediccion_manana["estadoCielo"] if e["periodo"] == "12-24"), "No disponible")
 
-    st.subheader(f"📡 Predicción Meteorológica para {puerto_seleccionado}")
-    st.write(f"📅 **Hoy ({fecha_hoy}):** {estado_cielo_hoy}, 🌡 Temp. Máx: {prediccion_hoy['temperatura']['maxima']}°C, Temp. Mín: {prediccion_hoy['temperatura']['minima']}°C")
-    st.write(f"📅 **Mañana ({fecha_manana}):** {estado_cielo_manana}, 🌡 Temp. Máx: {prediccion_manana['temperatura']['maxima']}°C, Temp. Mín: {prediccion_manana['temperatura']['minima']}°C")
 
-# 🔹 Obtener el estado del mar desde AEMET
-st.subheader(f"🌊 Estado del Mar en {subzona}")
-response_mar = requests.get("https://opendata.aemet.es/opendata/api/prediccion/maritima/costera/costa/46/", params={"api_key": API_KEY})
-if response_mar.status_code == 200:
-    data_url_mar = response_mar.json().get("datos", "")
-    if data_url_mar:
-        datos_mar_json = requests.get(data_url_mar).json()
-        velocidad_viento = obtener_velocidad_viento(datos_mar_json, subzona)
-        altura_olas, periodo_olas, estado_mar = estimar_estado_mar(velocidad_viento)
-
-        st.write(f"🌊 **Altura de las Olas:** {altura_olas} m")
-        st.write(f"⏳ **Periodo de las Olas:** {periodo_olas} s")
-        st.write(f"📌 **Estado del Mar:** {estado_mar}")
+    # url_widget = f"https://portus.puertos.es/#/locationsWidget?code={codigo_puerto}&theme=dark&locale=es&cache_buster={st.session_state.widget_contador}"
+    # 📌 Mostrar el widget con los datos
+    # st.markdown(f"### 🌊 **Previsiones y estado actual del mar en el {puerto_seleccionado}.** Todas las horas son GMT.")
+    # st.markdown(
+    #    f'<iframe src="{url_widget}" width="1040" height="570" frameborder="0"></iframe>',
+    #    unsafe_allow_html=True
+    #)
+else:
+    st.warning("⚠️ No se encontró el código del puerto seleccionado.")
