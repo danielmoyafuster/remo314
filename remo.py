@@ -14,13 +14,15 @@ import folium
 from streamlit_folium import folium_static
 from geopy.distance import geodesic
 from streamlit_folium import st_folium
+import re
+
 # ---------------------------------------------------------------------------------------------------------
 # API Key de AEMET
 API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkYW5pZWxtb3lhZnVzdGVyQGdtYWlsLmNvbSIsImp0aSI6ImE5YzRlYzA2LTQ5ZmMtNGIyZi04OGU4LWRjNTQ1MDA1MThmYiIsImlzcyI6IkFFTUVUIiwiaWF0IjoxNzQwNjY4MjQ4LCJ1c2VySWQiOiJhOWM0ZWMwNi00OWZjLTRiMmYtODhlOC1kYzU0NTAwNTE4ZmIiLCJyb2xlIjoiIn0.FPSuXda0P6PeRFZ80LHCW-O6cMdMR8RLTFl_pBKQ6q4"
 # ---------------------------------------------------------------------------------------------------------
 # DICCIONARIO PUERTOS -> CODIGOS DE MUNICIPIOS -> COORDENADAS GPS -> SUBZONA PORTUARIA
 # ---------------------------------------------------------------------------------------------------------
-datos_puertos = {
+codigos_coordenadas_puertos = {
     "Puerto de Alicante": ("03014", (38.3452, -0.4810), "Aguas costeras de Alicante"),
     "Puerto de Altea": ("03018", (38.5986, -0.0515), "Aguas costeras de Alicante"),
     "Puerto de Benidorm": ("03031", (38.5342, -0.1310), "Aguas costeras de Alicante"),
@@ -65,47 +67,29 @@ datos_puertos = {
 # ---------------------------------------------------------------------------------------------------------
 # FUNCIONES PARA OBTENER DATOS DE AEMET
 # ---------------------------------------------------------------------------------------------------------
-# 🔹 Función para obtener predicción meteorológica
+# 🔹 Función para obtener predicción meteorológica de AEMET
 def obtener_prediccion(codigo_municipio):
     url_prediccion = f"https://opendata.aemet.es/opendata/api/prediccion/especifica/municipio/diaria/{codigo_municipio}/"
     params = {"api_key": API_KEY}
-
-    response = requests.get(url_prediccion, params=params)
-    if response.status_code == 200:
-        data_json = response.json()
-        if "datos" in data_json:
-            data_url = data_json["datos"]
-            data_response = requests.get(data_url)
-            return data_response.json() if data_response.status_code == 200 else None
+    
+    try:
+        response = requests.get(url_prediccion, params=params, timeout=10)
+        if response.status_code == 200:
+            data_json = response.json()
+            if "datos" in data_json:
+                data_url = data_json["datos"]
+                data_response = requests.get(data_url, timeout=10)
+                return data_response.json() if data_response.status_code == 200 else None
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error obteniendo predicción: {e}")
     return None
 
-# 🔹 Función para obtener estado del mar
-def obtener_estado_mar():
-    url_mar = "https://opendata.aemet.es/opendata/api/prediccion/maritima/costera/costa/46/"
-    params = {"api_key": API_KEY}
-
-    response = requests.get(url_mar, params=params)
-    if response.status_code == 200:
-        data_json_mar = response.json()
-        if "datos" in data_json_mar:
-            data_url_mar = data_json_mar["datos"]
-            data_response_mar = requests.get(data_url_mar)
-            return data_response_mar.json() if data_response_mar.status_code == 200 else None
-    return None
-
-# 🔹 Función para estimar altura de olas, periodo y estado del mar basado en viento
-def estimar_estado_mar(velocidad_viento, fetch=10):
-    """
-    Calcula la altura de las olas, el periodo y el estado del mar basado en el viento.
-    :param velocidad_viento: Velocidad del viento en m/s
-    :param fetch: Distancia recorrida por el viento sobre el agua en km (por defecto 10 km)
-    :return: (altura_olas, periodo_olas, estado_mar)
-    """
+# 🔹 Función para estimar el estado del mar basado en la velocidad del viento
+def estimar_estado_mar(velocidad_viento):
+    if velocidad_viento > 20:
+        velocidad_viento /= 3.6  # Convertir km/h a m/s
     
-    if velocidad_viento > 20:  # Asumimos que el dato está en km/h si es grande
-        velocidad_viento = velocidad_viento / 3.6  # Convertir km/h a m/s
-    
-    altura_olas = 0.0245 * (velocidad_viento ** 1.2) * (fetch ** 0.3)
+    altura_olas = 0.0245 * (velocidad_viento ** 1.2) * (10 ** 0.3)
     periodo_olas = 0.67 * (altura_olas ** 0.5)
 
     if altura_olas < 0.1:
@@ -129,51 +113,64 @@ def estimar_estado_mar(velocidad_viento, fetch=10):
 
     return round(altura_olas, 2), round(periodo_olas, 2), estado_mar
 
-# 🔹 Interfaz en Streamlit
-st.title("🌊 Predicción Meteorológica en Puertos de la Comunidad Valenciana")
+# 🔹 Función para obtener la velocidad del viento desde el estado del mar
+def obtener_velocidad_viento(datos_mar_json, subzona):
+    try:
+        for zona in datos_mar_json[0]["prediccion"]["zona"]:
+            for subzona_data in zona["subzona"]:
+                if subzona_data["nombre"] == subzona:
+                    descripcion = subzona_data["texto"]
+                    match = re.search(r'(\d+) a (\d+)', descripcion)
+                    if match:
+                        return (int(match.group(1)) + int(match.group(2))) / 2
+                    match = re.search(r'(\d+)', descripcion)
+                    if match:
+                        return int(match.group(1))
+    except Exception as e:
+        st.warning(f"Error al obtener la velocidad del viento: {e}")
+    return 10
+
+# 🔹 Streamlit - Interfaz de usuario
+st.title("🌊 Predicción Meteorológica y Estado del Mar en Puertos")
 
 # 📌 Selección del puerto
-puerto_seleccionado = st.selectbox("Selecciona un puerto:", list(datos_puertos.keys()))
-codigo_municipio, coordenadas, subzona = datos_puertos[puerto_seleccionado]
+puerto_seleccionado = st.selectbox("Selecciona un puerto:", list(codigos_coordenadas_puertos.keys()))
+if puerto_seleccionado in codigos_coordenadas_puertos:
+    codigo_municipio, coordenadas, subzona = codigos_coordenadas_puertos[puerto_seleccionado]
 
-# 🔹 Mapa interactivo
+# 📌 Mostrar mapa interactivo
 st.subheader("🗺️ Ubicación en el mapa")
 mapa = folium.Map(location=coordenadas, zoom_start=10)
-folium.Marker(location=coordenadas, popup=f"{puerto_seleccionado}", icon=folium.Icon(color="blue", icon="info-sign")).add_to(mapa)
+folium.Marker(location=coordenadas, popup=f"{puerto_seleccionado}", icon=folium.Icon(color="blue")).add_to(mapa)
 folium_static(mapa)
 
-# 🔹 Obtener y mostrar predicción meteorológica
+# 🔹 Obtener predicción meteorológica
 datos_prediccion = obtener_prediccion(codigo_municipio)
+
 if datos_prediccion:
     prediccion_hoy = datos_prediccion[0]["prediccion"]["dia"][0]
     prediccion_manana = datos_prediccion[0]["prediccion"]["dia"][1]
 
-    estado_cielo_hoy = next((e["descripcion"] for e in prediccion_hoy["estadoCielo"] if e["periodo"] == "12-24"), "No disponible")
-    estado_cielo_manana = next((e["descripcion"] for e in prediccion_manana["estadoCielo"] if e["periodo"] == "12-24"), "No disponible")
-
     fecha_hoy = prediccion_hoy["fecha"][:10]
     fecha_manana = prediccion_manana["fecha"][:10]
 
-    st.subheader(f"📡 Predicción para {puerto_seleccionado}")
+    estado_cielo_hoy = next((e["descripcion"] for e in prediccion_hoy["estadoCielo"] if e["periodo"] == "12-24"), "No disponible")
+    estado_cielo_manana = next((e["descripcion"] for e in prediccion_manana["estadoCielo"] if e["periodo"] == "12-24"), "No disponible")
+
+    st.subheader(f"📡 Predicción Meteorológica para {puerto_seleccionado}")
     st.write(f"📅 **Hoy ({fecha_hoy}):** {estado_cielo_hoy}, 🌡 Temp. Máx: {prediccion_hoy['temperatura']['maxima']}°C, Temp. Mín: {prediccion_hoy['temperatura']['minima']}°C")
     st.write(f"📅 **Mañana ({fecha_manana}):** {estado_cielo_manana}, 🌡 Temp. Máx: {prediccion_manana['temperatura']['maxima']}°C, Temp. Mín: {prediccion_manana['temperatura']['minima']}°C")
 
-# 🔹 Obtener y mostrar estado del mar
-datos_mar_json = obtener_estado_mar()
-if datos_mar_json:
-    for zona in datos_mar_json[0]["prediccion"]["zona"]:
-        if zona["nombre"] == subzona:
-            st.subheader(f"🌊 Estado del Mar en {subzona}")
-            for subzona_data in zona["subzona"]:
-                st.write(f"📍 **{subzona_data['nombre']}**")
-                st.write(f"🌊 **Descripción:** {subzona_data['texto']}")
-                st.write("---")
-            break
+# 🔹 Obtener el estado del mar desde AEMET
+st.subheader(f"🌊 Estado del Mar en {subzona}")
+response_mar = requests.get("https://opendata.aemet.es/opendata/api/prediccion/maritima/costera/costa/46/", params={"api_key": API_KEY})
+if response_mar.status_code == 200:
+    data_url_mar = response_mar.json().get("datos", "")
+    if data_url_mar:
+        datos_mar_json = requests.get(data_url_mar).json()
+        velocidad_viento = obtener_velocidad_viento(datos_mar_json, subzona)
+        altura_olas, periodo_olas, estado_mar = estimar_estado_mar(velocidad_viento)
 
-# 🔹 Calcular y mostrar estado estimado del mar basado en viento
-velocidad_viento = 30  # Sustituir por el dato real
-altura_olas, periodo_olas, estado_mar = estimar_estado_mar(velocidad_viento)
-st.subheader("🌊 Estado Estimado del Mar")
-st.write(f"🌊 **Altura de las Olas:** {altura_olas} m")
-st.write(f"⏳ **Periodo de las Olas:** {periodo_olas} s")
-st.write(f"📌 **Estado del Mar:** {estado_mar}")
+        st.write(f"🌊 **Altura de las Olas:** {altura_olas} m")
+        st.write(f"⏳ **Periodo de las Olas:** {periodo_olas} s")
+        st.write(f"📌 **Estado del Mar:** {estado_mar}")
