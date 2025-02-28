@@ -69,7 +69,7 @@ if codigo_puerto:
 # 📌 Mostrar el nuevo widget
         contenedor_widget.markdown(
                 f"""
-                <iframe width="1040" height="570" src="{url_widget}" frameborder="0"></iframe>',
+                <iframe width="1040" height="570" src="{url_widget}" frameborder="0"></iframe>
                 <br>
                 <p style="text-align: center; font-size: 14px;">
                     ℹ️ <b>Para ampliar información sobre este puerto, visita 
