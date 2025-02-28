@@ -1,6 +1,12 @@
+import requests
 import streamlit as st
+import folium
+from streamlit_folium import folium_static
 import time
 
+# ---------------------------------------------------------------------------------------------------------
+# DICCIONARIO PUERTOS -> CÓDIGO PORTUARIO
+# ---------------------------------------------------------------------------------------------------------
 # 📌 Diccionario con los códigos reales de los puertos
 codigos_puertos_estado = {
     "Puerto de Alicante": "16130",
@@ -28,7 +34,9 @@ codigos_puertos_estado = {
     "Puerto de Villajoyosa": "26116",
     "Puerto de Vinaroz": "16250",
 }
-
+# ---------------------------------------------------------------------------------------------------------
+#  ESTADO DE LA MAR
+# ---------------------------------------------------------------------------------------------------------
 # 📌 Guardar el estado del puerto seleccionado en la sesión de Streamlit
 if "puerto_actual" not in st.session_state:
     st.session_state.puerto_actual = None
@@ -81,3 +89,102 @@ if codigo_puerto:
 
 else:
     st.warning("⚠️ No se encontró el código del puerto seleccionado.")
+# ---------------------------------------------------------------------------------------------------------
+#  A  E  M  E  T
+# ---------------------------------------------------------------------------------------------------------
+import requests
+import streamlit as st
+
+
+# ---------------------------------------------------------------------------------------------------------
+# API Key de AEMET
+API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkYW5pZWxtb3lhZnVzdGVyQGdtYWlsLmNvbSIsImp0aSI6ImE5YzRlYzA2LTQ5ZmMtNGIyZi04OGU4LWRjNTQ1MDA1MThmYiIsImlzcyI6IkFFTUVUIiwiaWF0IjoxNzQwNjY4MjQ4LCJ1c2VySWQiOiJhOWM0ZWMwNi00OWZjLTRiMmYtODhlOC1kYzU0NTAwNTE4ZmIiLCJyb2xlIjoiIn0.FPSuXda0P6PeRFZ80LHCW-O6cMdMR8RLTFl_pBKQ6q4"
+# ---------------------------------------------------------------------------------------------------------
+
+# ✅ Diccionario de códigos de municipios
+codigos_municipios_puertos = {
+    "Puerto de Alicante": "03014",
+    "Puerto de Castellón": "12040",
+    "Puerto de Gandía": "46131",
+    "Puerto de Valencia": "06139",
+    "Puerto de Dénia": "03063",
+    "La Albufereta (Alicante)":"03014",
+    "San Juan (Alicante)": "03119",
+    "Puerto de Altea": "03018",
+    "Puerto de Benidorm": "03031",
+    "Puerto El Grau de Burriana": "12032",
+    "Puerto de Calpe": "03047",
+    "Puerto de Castellón": "12040",
+    "Puerto de Cullera": "46105",
+    "Puerto de Dénia": "03063",
+    "Puerto de El Campello": "03050",
+    "Puerto de Gandía": "46211",
+    "Puerto Guardamar del Segura": "03076",
+    "Puerto de Jávea": "03082",
+    "Pau Pi (Oliva)": "46181",
+    "Puerto de Oropesa": "12085",
+    "Puerto de Peñíscola": "12089",
+    "Puerto de Pilar de la Horadada": "03902",
+    "Puerto de Santa Pola": "03121",
+    "Puerto de Sagunto": "46220",
+    "Puerto de Torrevieja": "03133",
+    "Puerto de Valencia": "46250",
+    "Puerto de Villajoyosa": "03139",
+    "Puerto de Vinaroz": "12138",
+
+    
+}
+
+# ✅ Función para obtener la predicción de AEMET
+def obtener_prediccion(codigo_municipio):
+    url_prediccion = f"https://opendata.aemet.es/opendata/api/prediccion/especifica/municipio/diaria/{codigo_municipio}/"
+    params = {"api_key": API_KEY}
+
+    try:
+        response = requests.get(url_prediccion, params=params)
+        if response.status_code == 200:
+            data_json = response.json()
+            if "datos" in data_json:
+                data_url = data_json["datos"]
+                data_response = requests.get(data_url)
+                if data_response.status_code == 200:
+                    return data_response.json()
+    except requests.exceptions.RequestException as e:
+        st.error(f"❌ Error en la solicitud a AEMET: {e}")
+    
+    return None
+
+# ✅ Streamlit: Selector de Puerto
+# st.title("🌦️ Predicción Meteorológica")
+# puerto_seleccionado = st.selectbox("Selecciona un puerto:", sorted(codigos_municipios_puertos.keys()))
+
+if puerto_seleccionado:
+    codigo_municipio = codigos_municipios_puertos[puerto_seleccionado]
+
+    # ✅ Predicción Meteorológica de AEMET
+    if codigo_municipio:
+        datos_prediccion = obtener_prediccion(codigo_municipio)
+
+        if datos_prediccion and isinstance(datos_prediccion, list):
+            try:
+                prediccion_hoy = datos_prediccion[0]["prediccion"]["dia"][0]
+                prediccion_manana = datos_prediccion[0]["prediccion"]["dia"][1]
+
+                fecha_hoy = prediccion_hoy["fecha"][:10]
+                fecha_manana = prediccion_manana["fecha"][:10]
+
+                estado_cielo_hoy = next((e["descripcion"] for e in prediccion_hoy["estadoCielo"] if e["periodo"] == "12-24"), "No disponible")
+                estado_cielo_manana = next((e["descripcion"] for e in prediccion_manana["estadoCielo"] if e["periodo"] == "12-24"), "No disponible")
+
+                temp_max_hoy, temp_min_hoy = prediccion_hoy["temperatura"]["maxima"], prediccion_hoy["temperatura"]["minima"]
+                temp_max_manana, temp_min_manana = prediccion_manana["temperatura"]["maxima"], prediccion_manana["temperatura"]["minima"]
+
+                # ✅ Mostrar solo la predicción en texto
+                st.subheader(f"📡 Predicción para {puerto_seleccionado}")
+                st.write(f"📅 **Hoy ({fecha_hoy}):** {estado_cielo_hoy}, 🌡 Máx: {temp_max_hoy}°C, Mín: {temp_min_hoy}°C")
+                st.write(f"📅 **Mañana ({fecha_manana}):** {estado_cielo_manana}, 🌡 Máx: {temp_max_manana}°C, Mín: {temp_min_manana}°C")
+
+            except KeyError:
+                st.warning("⚠️ AEMET no devolvió los datos esperados.")
+        else:
+            st.warning(f"❌ No se pudo obtener la predicción meteorológica para {puerto_seleccionado}.")
