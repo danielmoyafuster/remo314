@@ -161,9 +161,9 @@ if codigo_puerto:
      #   )
 # -.-.-.
     # Ajustar tamaño del iframe
-        iframe_width = "100%" if layout == "mobile" else "800px"
-        iframe_height = "300px" if layout == "mobile" else "500px"
-        
+        iframe_width = "100%" if layout == "mobile" else "900px"
+        iframe_height = "400px" if layout == "mobile" else "500px"
+
      
 
 
@@ -291,7 +291,7 @@ if puerto_seleccionado:
                 with col2:
                 # ✅ Mostrar solo la predicción en texto
 
-                    st.markdown(f"<h3 style='text-align: center;'>TIPO: {layout}</h3>", unsafe_allow_html=True) #### dani ###
+                    # st.markdown(f"<h3 style='text-align: center;'>TIPO: {layout}</h3>", unsafe_allow_html=True) #### dani ###
 
 
                     st.markdown(f"<h3 style='text-align: center;'>Predicción para {puerto_seleccionado}</h3>", unsafe_allow_html=True)
