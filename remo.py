@@ -18,9 +18,13 @@ width = st_javascript("window.innerWidth")
 layout = "desktop" if width and int(width) > 800 else "mobile"
 
 # st.write(f"📱 Dispositivo detectado: {layout} (Ancho: {width}px)")
+if layout == "desktop":
+    col1, col2, col3 = st.columns([1, 3, 1])  # Menú pequeño, contenido más grande
+else:
+    col1, col2, col3  = st.columns([1, 1, 1])  # En móvil, columnas iguales
 
 # Crear columnas para centrar contenido
-col1, col2, col3 = st.columns([1, 3, 1])  # Columna central más ancha
+# col1, col2, col3 = st.columns([1, 3, 1])  # Columna central más ancha
 
 with col2:  # Todo centrado en la columna central
     # st.markdown("Predicción del Estado del Mar", unsafe_allow_html=True)
