@@ -5,3 +5,4 @@ requests
 geopy
 streamlit-folium
 unidecode
+streamlit-javascript
