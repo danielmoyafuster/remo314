@@ -164,7 +164,7 @@ if codigo_puerto:
         iframe_width = "100%" if layout == "mobile" else "800px"
         iframe_height = "300px" if layout == "mobile" else "500px"
         
-        st.write(layout)
+     
 
 
     # Insertar iframe responsivo con CSS
@@ -290,6 +290,10 @@ if puerto_seleccionado:
                 temp_max_manana, temp_min_manana = prediccion_manana["temperatura"]["maxima"], prediccion_manana["temperatura"]["minima"]
                 with col2:
                 # ✅ Mostrar solo la predicción en texto
+
+                    st.markdown(f"<h3 style='text-align: center;'>TIPO: {layout}</h3>", unsafe_allow_html=True) #### dani ###
+
+
                     st.markdown(f"<h3 style='text-align: center;'>Predicción para {puerto_seleccionado}</h3>", unsafe_allow_html=True)
                     # st.write(f"Predicción para {puerto_seleccionado}")
                     # st.subheader(f"📡 Predicción para {puerto_seleccionado}")
