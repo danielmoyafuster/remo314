@@ -3,6 +3,44 @@ import streamlit as st
 import folium
 from streamlit_folium import folium_static
 import time
+from streamlit_javascript import st_javascript
+# ---------------------------------------------------------------------------------------------------------
+# Detectar el tipo de dispositivo desde el que se está visualizando
+# ---------------------------------------------------------------------------------------------------------
+
+
+
+# Activar pantalla ancha
+st.set_page_config(layout="wide")
+
+# Detectar ancho de pantalla
+width = st_javascript("window.innerWidth")
+layout = "desktop" if width and int(width) > 800 else "mobile"
+
+# st.write(f"📱 Dispositivo detectado: {layout} (Ancho: {width}px)")
+
+# Crear columnas para centrar contenido
+col1, col2, col3 = st.columns([1, 3, 1])  # Columna central más ancha
+
+with col2:  # Todo centrado en la columna central
+    # st.markdown("Predicción del Estado del Mar", unsafe_allow_html=True)
+    st.markdown("""
+        <div style="display: flex; justify-content: center;">
+            Estado de la Mar (Viento. Puedes pinchar en el texto viento de la imagen para cambiar el modelo)
+        </div>
+    """, unsafe_allow_html=True)   
+    # Alinear el iframe con CSS
+    st.markdown("""
+        <div style="display: flex; justify-content: center;">
+            <iframe src="https://embed.windy.com/embed2.html?lat=38.35&lon=-0.48&zoom=8&level=surface&overlay=wind"
+                    width="1040" height="500" frameborder="0">
+            </iframe>
+        </div>
+    """, unsafe_allow_html=True)
+
+
+
+
 
 # ---------------------------------------------------------------------------------------------------------
 # DICCIONARIO PUERTOS -> CÓDIGO PORTUARIO
@@ -42,7 +80,8 @@ if "puerto_actual" not in st.session_state:
     st.session_state.puerto_actual = None
 
 # 📌 Selector de puerto ordenado alfabéticamente
-puerto_seleccionado = st.selectbox("Selecciona un puerto:", sorted(codigos_puertos_estado.keys()))
+with col1:
+    puerto_seleccionado = st.selectbox("Selecciona un puerto:", sorted(codigos_puertos_estado.keys()))
 
 # 📌 Obtener el código del puerto
 codigo_puerto = codigos_puertos_estado.get(puerto_seleccionado, None)
@@ -53,7 +92,7 @@ if puerto_seleccionado != st.session_state.puerto_actual:
     st.session_state.widget_contador = time.time()  # Nuevo valor único para evitar caché
 
     # 📌 Forzar una limpieza del iframe antes de recargarlo
-    st.markdown("⚠️ Cargando datos de Puertos del Estado...")
+    # st.markdown("⚠️ Cargando datos de Puertos del Estado...")
     time.sleep(0.5)  # Esperar 0.5 segundos antes de insertar el nuevo iframe
     st.markdown("")  # Limpiar el widget
 
@@ -63,8 +102,9 @@ if codigo_puerto:
     contenedor_widget = st.empty()
 
 # 📌 Mensaje de carga mientras cambia el widget
-    with contenedor_widget:
-        st.warning("⚠️ Cargando datos de Puertos del Estado...")
+#    with contenedor_widget:
+    with col2:
+        # st.warning("⚠️ Cargando datos de Puertos del Estado...")
 
 # 📌 Generar la URL del widget con un "cache buster" para forzar recarga
         cache_buster = int(time.time())  # Genera un número aleatorio basado en el tiempo
@@ -77,7 +117,9 @@ if codigo_puerto:
 # 📌 Mostrar el nuevo widget
         contenedor_widget.markdown(
                 f"""
-                <iframe width="1040" height="570" src="{url_widget}" frameborder="0"></iframe>
+                <div style="display: flex; justify-content: center;">
+                    <iframe width="1040" height="570" src="{url_widget}" frameborder="0"></iframe>
+                </div>
                 <br>
                 <p style="text-align: center; font-size: 14px;">
                     ℹ️ <b>Para ampliar información sobre este puerto, visita 
@@ -86,14 +128,17 @@ if codigo_puerto:
                 """,
             unsafe_allow_html=True
         )
+# -.-.-.
+        
 
+
+#-.-.-.-.
 else:
     st.warning("⚠️ No se encontró el código del puerto seleccionado.")
 # ---------------------------------------------------------------------------------------------------------
 #  A  E  M  E  T
 # ---------------------------------------------------------------------------------------------------------
-import requests
-import streamlit as st
+
 
 
 # ---------------------------------------------------------------------------------------------------------
@@ -169,7 +214,7 @@ if puerto_seleccionado:
             try:
                 prediccion_hoy = datos_prediccion[0]["prediccion"]["dia"][0]
                 prediccion_manana = datos_prediccion[0]["prediccion"]["dia"][1]
-
+                
                 fecha_hoy = prediccion_hoy["fecha"][:10]
                 fecha_manana = prediccion_manana["fecha"][:10]
 
@@ -178,11 +223,16 @@ if puerto_seleccionado:
 
                 temp_max_hoy, temp_min_hoy = prediccion_hoy["temperatura"]["maxima"], prediccion_hoy["temperatura"]["minima"]
                 temp_max_manana, temp_min_manana = prediccion_manana["temperatura"]["maxima"], prediccion_manana["temperatura"]["minima"]
-
+                with col2:
                 # ✅ Mostrar solo la predicción en texto
-                st.subheader(f"📡 Predicción para {puerto_seleccionado}")
-                st.write(f"📅 **Hoy ({fecha_hoy}):** {estado_cielo_hoy}, 🌡 Máx: {temp_max_hoy}°C, Mín: {temp_min_hoy}°C")
-                st.write(f"📅 **Mañana ({fecha_manana}):** {estado_cielo_manana}, 🌡 Máx: {temp_max_manana}°C, Mín: {temp_min_manana}°C")
+                    st.markdown(f"<h3 style='text-align: center;'>Predicción para {puerto_seleccionado}</h3>", unsafe_allow_html=True)
+                    # st.write(f"Predicción para {puerto_seleccionado}")
+                    # st.subheader(f"📡 Predicción para {puerto_seleccionado}")
+                    st.markdown(f"Predicción para HOY    ({fecha_hoy}): {estado_cielo_hoy}, Temp.Máx.: {temp_max_hoy}°C, Temp.Mín.: {temp_min_hoy}°C")
+                    st.markdown(f"Predicción para MAÑANA ({fecha_manana}): {estado_cielo_manana}, Temp.Máx.: {temp_max_manana}°C, Temp.Mín.: {temp_min_manana}°C")
+                   
+                    # st.write(f"📅 **Hoy ({fecha_hoy}):** {estado_cielo_hoy}, 🌡 Máx: {temp_max_hoy}°C, Mín: {temp_min_hoy}°C")
+                    # st.write(f"📅 **Mañana ({fecha_manana}):** {estado_cielo_manana}, 🌡 Máx: {temp_max_manana}°C, Mín: {temp_min_manana}°C")
 
             except KeyError:
                 st.warning("⚠️ AEMET no devolvió los datos esperados.")
