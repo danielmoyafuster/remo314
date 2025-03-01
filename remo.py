@@ -34,16 +34,43 @@ with col2:  # Todo centrado en la columna central
         </div>
     """, unsafe_allow_html=True)   
     # Alinear el iframe con CSS
-    st.markdown("""
-        <div style="display: flex; justify-content: center;">
-            <iframe src="https://embed.windy.com/embed2.html?lat=38.35&lon=-0.48&zoom=8&level=surface&overlay=wind"
-                    width="1040" height="500" frameborder="0">
+    # st.markdown("""
+    #    <div style="display: flex; justify-content: center;">
+    #        <iframe src="https://embed.windy.com/embed2.html?lat=38.35&lon=-0.48&zoom=8&level=surface&overlay=wind"
+    #                width="1040" height="500" frameborder="0">
+    #        </iframe>
+    #    </div>
+    #""", unsafe_allow_html=True)
+
+    # Detectar ancho de pantalla con un identificador único
+
+    # st.write(f"📱 Dispositivo detectado: {layout} (Ancho: {width}px)")
+
+    # Ajustar tamaño del iframe
+    iframe_width = "100%" if layout == "mobile" else "800px"
+    iframe_height = "300px" if layout == "mobile" else "500px"
+
+    # Insertar iframe responsivo con CSS
+    st.markdown(f"""
+        <style>
+            .iframe-container {{
+                display: flex;
+                justify-content: center;
+                width: 100%;
+            }}
+            .responsive-iframe {{
+                width: {iframe_width};
+                height: {iframe_height};
+                max-width: 100%;
+                border: none;
+            }}
+        </style>
+        <div class="iframe-container">
+            <iframe class="responsive-iframe" 
+                    src="https://embed.windy.com/embed2.html?lat=38.35&lon=-0.48&zoom=8&level=surface&overlay=wind">
             </iframe>
         </div>
     """, unsafe_allow_html=True)
-
-
-
 
 
 # ---------------------------------------------------------------------------------------------------------
@@ -119,21 +146,52 @@ if codigo_puerto:
         time.sleep(1)  # Pequeña pausa para asegurar que Streamlit no conserve caché
 
 # 📌 Mostrar el nuevo widget
-        contenedor_widget.markdown(
-                f"""
-                <div style="display: flex; justify-content: center;">
-                    <iframe width="1040" height="570" src="{url_widget}" frameborder="0"></iframe>
+     #   contenedor_widget.markdown(
+     #           f"""
+     #           <div style="display: flex; justify-content: center;">
+     #               <iframe width="1040" height="570" src="{url_widget}" frameborder="0"></iframe>
+     #           </div>
+     #           <br>
+     #           <p style="text-align: center; font-size: 14px;">
+     #               ℹ️ <b>Para ampliar información sobre este puerto, visita 
+     #           <a href="https://portus.puertos.es" target="_blank">Portus - Puertos del Estado</a></b> 🌍
+     #           </p>
+     #           """,
+     #       unsafe_allow_html=True
+     #   )
+# -.-.-.
+    # Ajustar tamaño del iframe
+        iframe_width = "100%" if layout == "mobile" else "800px"
+        iframe_height = "300px" if layout == "mobile" else "500px"
+
+    # Insertar iframe responsivo con CSS
+        contenedor_widget.markdown(f"""
+                <style>
+                    .iframe-container {{
+                        display: flex;
+                        justify-content: center;
+                        width: 100%;
+                    }}
+                    .responsive-iframe {{
+                        width: {iframe_width};
+                        height: {iframe_height};
+                        max-width: 100%;
+                        border: none;
+                    }}
+                </style>
+                <div class="iframe-container">
+                    <iframe class="responsive-iframe" 
+                        src="{url_widget}" frameborder="0">
+                    </iframe>
                 </div>
                 <br>
                 <p style="text-align: center; font-size: 14px;">
                     ℹ️ <b>Para ampliar información sobre este puerto, visita 
                 <a href="https://portus.puertos.es" target="_blank">Portus - Puertos del Estado</a></b> 🌍
                 </p>
-                """,
-            unsafe_allow_html=True
-        )
-# -.-.-.
-        
+            """, unsafe_allow_html=True)
+
+   
 
 
 #-.-.-.-.
@@ -232,8 +290,8 @@ if puerto_seleccionado:
                     st.markdown(f"<h3 style='text-align: center;'>Predicción para {puerto_seleccionado}</h3>", unsafe_allow_html=True)
                     # st.write(f"Predicción para {puerto_seleccionado}")
                     # st.subheader(f"📡 Predicción para {puerto_seleccionado}")
-                    st.markdown(f"Predicción para HOY    ({fecha_hoy}): {estado_cielo_hoy}, Temp.Máx.: {temp_max_hoy}°C, Temp.Mín.: {temp_min_hoy}°C")
-                    st.markdown(f"Predicción para MAÑANA ({fecha_manana}): {estado_cielo_manana}, Temp.Máx.: {temp_max_manana}°C, Temp.Mín.: {temp_min_manana}°C")
+                    st.markdown(f"<p style='font-size: 18px; text-align: center;'>Predicción para HOY    ({fecha_hoy}): {estado_cielo_hoy}, Temp.Máx.: {temp_max_hoy}°C, Temp.Mín.: {temp_min_hoy}°C</p>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='font-size: 18px; text-align: center;'>Predicción para MAÑANA ({fecha_manana}): {estado_cielo_manana}, Temp.Máx.: {temp_max_manana}°C, Temp.Mín.: {temp_min_manana}°C</p>", unsafe_allow_html=True)
                    
                     # st.write(f"📅 **Hoy ({fecha_hoy}):** {estado_cielo_hoy}, 🌡 Máx: {temp_max_hoy}°C, Mín: {temp_min_hoy}°C")
                     # st.write(f"📅 **Mañana ({fecha_manana}):** {estado_cielo_manana}, 🌡 Máx: {temp_max_manana}°C, Mín: {temp_min_manana}°C")
