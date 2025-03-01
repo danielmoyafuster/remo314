@@ -163,6 +163,9 @@ if codigo_puerto:
     # Ajustar tamaño del iframe
         iframe_width = "100%" if layout == "mobile" else "800px"
         iframe_height = "300px" if layout == "mobile" else "500px"
+        
+        st.write(layout)
+
 
     # Insertar iframe responsivo con CSS
         contenedor_widget.markdown(f"""
